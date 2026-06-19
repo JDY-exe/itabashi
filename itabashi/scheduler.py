@@ -88,6 +88,7 @@ class PollingService:
         self.backoff = Backoff(base_seconds=poll_seconds, current_seconds=poll_seconds)
         self.sleep = sleep
         self.stop_event = Event()
+        self.last_seen_identity: str | None = None
 
     def run_forever(self) -> None:
         self.worker.start()
@@ -110,10 +111,34 @@ class PollingService:
         self.backoff.success()
         if track is not None:
             if self.worker.submit(track):
+                if track.identity != self.last_seen_identity:
+                    logger.info(
+                        "Song change detected: %s - %s",
+                        track.artist,
+                        track.title,
+                        extra={"artist": track.artist, "title": track.title, "album": track.album},
+                    )
+                else:
+                    logger.info(
+                        "Current song refresh queued: %s - %s",
+                        track.artist,
+                        track.title,
+                        extra={
+                            "artist": track.artist,
+                            "title": track.title,
+                            "album": track.album,
+                            "observed_at_epoch": track.observed_at_epoch,
+                        },
+                    )
+                self.last_seen_identity = track.identity
+            else:
                 logger.info(
-                    "Song change detected: %s - %s",
-                    track.artist,
-                    track.title,
-                    extra={"artist": track.artist, "title": track.title, "album": track.album},
+                    "Current song refresh skipped: duplicate render observation",
+                    extra={
+                        "artist": track.artist,
+                        "title": track.title,
+                        "album": track.album,
+                        "observed_at_epoch": track.observed_at_epoch,
+                    },
                 )
         return self.backoff.current_seconds

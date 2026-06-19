@@ -78,7 +78,13 @@ def test_rate_limit_backoff_and_recovery():
 
 
 def test_song_change_detected_logs_only_when_submitted(caplog):
-    tracks = iter([Track("Artist", "Song"), Track("Artist", "Song")])
+    tracks = iter(
+        [
+            Track("Artist", "Song", observed_at_epoch=1.0),
+            Track("Artist", "Song", observed_at_epoch=2.0),
+            Track("Artist", "Song", observed_at_epoch=2.0),
+        ]
+    )
     worker = LatestWinsWorker(lambda track: None)
 
     with caplog.at_level("INFO", logger="itabashi.scheduler"):
@@ -86,5 +92,8 @@ def test_song_change_detected_logs_only_when_submitted(caplog):
 
         service.poll_once()
         service.poll_once()
+        service.poll_once()
 
     assert caplog.text.count("Song change detected: Artist - Song") == 1
+    assert caplog.text.count("Current song refresh queued: Artist - Song") == 1
+    assert caplog.text.count("Current song refresh skipped: duplicate render observation") == 1

@@ -13,6 +13,9 @@ from .renderer import Renderer
 from .scheduler import LatestWinsWorker, PollingService
 
 
+logger = logging.getLogger(__name__)
+
+
 def configure_logging() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -31,9 +34,40 @@ def build_service(config: Config) -> PollingService:
         text = cache.get_lyrics(track, lyrics.lyrics_for, provider="genius")
         art_path = cache.get_album_art(track.album_art_url)
         payload = RenderPayload(track=track, lyrics=text, album_art_path=art_path, now_epoch=track.observed_at_epoch)
-        page_key = (track.identity, renderer.page_index(payload))
+        page_index = renderer.page_index(payload)
+        page_key = (track.identity, page_index)
+        elapsed_seconds = _elapsed_seconds(track, payload.now_epoch)
+        duration_seconds = (track.duration_ms or 240_000) / 1000
         if page_key == last_displayed:
+            logger.info(
+                "Lyric page unchanged; display refresh skipped: %s - %s page %s",
+                track.artist,
+                track.title,
+                page_index + 1,
+                extra={
+                    "artist": track.artist,
+                    "title": track.title,
+                    "album": track.album,
+                    "page_index": page_index,
+                    "elapsed_seconds": elapsed_seconds,
+                    "duration_seconds": duration_seconds,
+                },
+            )
             return
+        logger.info(
+            "Rendering lyric page: %s - %s page %s",
+            track.artist,
+            track.title,
+            page_index + 1,
+            extra={
+                "artist": track.artist,
+                "title": track.title,
+                "album": track.album,
+                "page_index": page_index,
+                "elapsed_seconds": elapsed_seconds,
+                "duration_seconds": duration_seconds,
+            },
+        )
         display.show(renderer.render(payload))
         last_displayed = page_key
 
@@ -83,3 +117,9 @@ def dry_run_main() -> None:
         cache_dir=config.cache_dir,
     )
     render_current_once(config)
+
+
+def _elapsed_seconds(track: Track, now_epoch: float | None) -> float | None:
+    if track.started_at_epoch is None or now_epoch is None:
+        return None
+    return max(0.0, now_epoch - track.started_at_epoch)
