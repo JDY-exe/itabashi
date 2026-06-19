@@ -55,3 +55,15 @@ def test_environment_values_override_dotenv(tmp_path: Path, monkeypatch):
     assert config.lastfm_api_key == "env-key"
     assert config.lastfm_user == "env-user"
     assert config.genius_access_token == "env-token"
+
+
+def test_config_accepts_debug_output_mode(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LASTFM_API_KEY", "env-key")
+    monkeypatch.setenv("LASTFM_USER", "env-user")
+    monkeypatch.setenv("GENIUS_ACCESS_TOKEN", "env-token")
+    monkeypatch.setenv("OUTPUT_MODE", "debug")
+
+    config = Config.from_env()
+
+    assert config.output_mode == "debug"

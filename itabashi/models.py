@@ -72,8 +72,8 @@ class Config:
 
         poll_seconds = int(os.environ.get("POLL_SECONDS", "20"))
         output_mode = os.environ.get("OUTPUT_MODE", "inky").strip().lower()
-        if output_mode not in {"inky", "png"}:
-            raise ValueError("OUTPUT_MODE must be 'inky' or 'png'")
+        if output_mode not in {"inky", "png", "debug"}:
+            raise ValueError("OUTPUT_MODE must be 'inky', 'png', or 'debug'")
 
         return cls(
             lastfm_api_key=api_key,

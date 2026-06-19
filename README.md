@@ -19,7 +19,7 @@ Required:
 Optional:
 
 - `POLL_SECONDS=20`
-- `OUTPUT_MODE=inky|png`
+- `OUTPUT_MODE=inky|png|debug`
 - `PNG_OUTPUT=out/current.png`
 - `CACHE_DIR=.cache/itabashi`
 
@@ -30,6 +30,14 @@ OUTPUT_MODE=png itabashi-dry-run
 ```
 
 The dry run writes `out/current.png` without requiring Pi display hardware.
+
+For live polling without writing to the display or PNG output, use debug mode:
+
+```bash
+OUTPUT_MODE=debug itabashi
+```
+
+Debug mode keeps pagination/render logging active and prints the displayed lyric page on each fresh render.
 
 ## Service
 

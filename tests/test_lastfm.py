@@ -74,6 +74,26 @@ def test_current_track_uses_poll_time_without_date():
     assert track.observed_at_epoch is not None
 
 
+def test_current_track_preserves_first_observed_start_for_same_now_playing_track(monkeypatch):
+    times = iter([100.0, 120.0])
+    monkeypatch.setattr("itabashi.lastfm.time.time", lambda: next(times))
+    http = FakeHTTP(
+        payload({"@attr": {"nowplaying": "true"}, "name": "Song", "artist": {"#text": "Artist"}}),
+        {"track": {"duration": "180000"}},
+        payload({"@attr": {"nowplaying": "true"}, "name": "Song", "artist": {"#text": "Artist"}}),
+        {"track": {"duration": "180000"}},
+    )
+    client = LastFMClient("api-key", "lastfm-user", http)
+
+    first = client.current_track()
+    second = client.current_track()
+
+    assert first.started_at_epoch == 100.0
+    assert first.observed_at_epoch == 100.0
+    assert second.started_at_epoch == 100.0
+    assert second.observed_at_epoch == 120.0
+
+
 def test_current_track_defaults_duration_when_lookup_fails():
     http = FakeHTTP(
         payload({"@attr": {"nowplaying": "true"}, "name": "Song", "artist": {"#text": "Artist"}}),

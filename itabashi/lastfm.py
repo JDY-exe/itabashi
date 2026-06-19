@@ -20,6 +20,8 @@ class LastFMClient:
     user: str
     http: JSONHTTPClient
     api_url: str = LASTFM_API
+    _last_identity: str | None = None
+    _last_started_at_epoch: float | None = None
 
     def current_track(self) -> Track | None:
         logger.info("Polling Last.fm for current track", extra={"lastfm_user": self.user})
@@ -36,8 +38,10 @@ class LastFMClient:
         observed_at = time.time()
         track = parse_current_track(payload, observed_at_epoch=observed_at)
         if track is None:
+            self._last_identity = None
+            self._last_started_at_epoch = None
             return None
-        return self._with_duration(track)
+        return self._with_duration(self._with_stable_start(track))
 
     def _with_duration(self, track: Track) -> Track:
         try:
@@ -60,6 +64,14 @@ class LastFMClient:
             )
             return _copy_track(track, duration_ms=DEFAULT_DURATION_MS)
         return _copy_track(track, duration_ms=duration_ms)
+
+    def _with_stable_start(self, track: Track) -> Track:
+        started_at = track.started_at_epoch
+        if track.identity == self._last_identity and self._last_started_at_epoch is not None:
+            started_at = self._last_started_at_epoch
+        self._last_identity = track.identity
+        self._last_started_at_epoch = started_at
+        return _copy_track(track, started_at_epoch=started_at)
 
 
 def parse_current_track(payload: Any, observed_at_epoch: float | None = None) -> Track | None:
@@ -155,13 +167,17 @@ def _best_image(images: Any) -> str:
     return ""
 
 
-def _copy_track(track: Track, duration_ms: int) -> Track:
+def _copy_track(
+    track: Track,
+    duration_ms: int | None = None,
+    started_at_epoch: float | None = None,
+) -> Track:
     return Track(
         artist=track.artist,
         title=track.title,
         album=track.album,
         album_art_url=track.album_art_url,
-        started_at_epoch=track.started_at_epoch,
-        duration_ms=duration_ms,
+        started_at_epoch=track.started_at_epoch if started_at_epoch is None else started_at_epoch,
+        duration_ms=track.duration_ms if duration_ms is None else duration_ms,
         observed_at_epoch=track.observed_at_epoch,
     )

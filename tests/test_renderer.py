@@ -43,6 +43,12 @@ def test_missing_art_fallback_renders():
     assert image.getpixel((550, 24)) == (0, 0, 0)
 
 
+def test_render_does_not_draw_vertical_divider():
+    image = Renderer().render(RenderPayload(Track("Artist", "Title"), lyrics="lyrics", album_art_path=None))
+
+    assert image.getpixel((528, 10)) == (255, 255, 255)
+
+
 def test_missing_lyrics_fallback_renders():
     image = Renderer().render(RenderPayload(Track("Artist", "Title"), lyrics=None))
 
@@ -55,8 +61,8 @@ def test_font_sizes_are_increased_by_50_percent():
 
     assert renderer.font_regular.size == REGULAR_FONT_SIZE == 18
     assert renderer.font_small.size == SMALL_FONT_SIZE == 14
-    assert renderer.font_title.size == TITLE_FONT_SIZE == 25
-    assert renderer.font_meta.size == META_FONT_SIZE == 16
+    assert renderer.font_title.size == TITLE_FONT_SIZE == 33
+    assert renderer.font_meta.size == META_FONT_SIZE == 24
 
 
 def test_unicode_text_renders():
@@ -90,13 +96,13 @@ def test_wrap_breaks_long_unspaced_text_to_fit():
     assert all(_text_width(draw, line, renderer.font_regular) <= width for line in lines)
 
 
-def test_paginate_lines_preserves_rough_20_percent_overlap():
+def test_paginate_lines_preserves_rough_30_percent_overlap():
     lines = [f"line {index}" for index in range(20)]
 
     pages = _paginate_lines(lines, capacity=10)
 
     assert pages[0] == lines[:10]
-    assert pages[1][:2] == pages[0][-2:]
+    assert pages[1][:3] == pages[0][-3:]
 
 
 def test_page_index_tracks_song_progress():
@@ -106,3 +112,21 @@ def test_page_index_tracks_song_progress():
     assert _page_index_for_progress(pages, RenderPayload(track, lyrics="x", now_epoch=100.0)) == 0
     assert _page_index_for_progress(pages, RenderPayload(track, lyrics="x", now_epoch=200.0)) == 2
     assert _page_index_for_progress(pages, RenderPayload(track, lyrics="x", now_epoch=400.0)) == 3
+
+
+def test_pagination_info_reports_line_range_and_percentages():
+    renderer = Renderer()
+    lyrics = "\n".join(f"line {index}" for index in range(120))
+    track = Track("Artist", "Title", started_at_epoch=100.0, duration_ms=200_000)
+
+    info = renderer.pagination_info(RenderPayload(track, lyrics=lyrics, now_epoch=200.0))
+
+    assert info.total_lines == 120
+    assert info.page_count > 1
+    assert info.progress_percent == 50.0
+    assert info.start_line is not None
+    assert info.end_line is not None
+    assert info.start_line <= info.end_line
+    assert info.end_line_percent == info.end_line / info.total_lines * 100
+    assert info.displayed_lines
+    assert len(info.displayed_lines) == info.end_line - info.start_line + 1
