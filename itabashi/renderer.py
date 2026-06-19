@@ -10,15 +10,20 @@ from .models import RenderPayload
 
 WIDTH = 800
 HEIGHT = 480
+FONT_SCALE = 0.6
+REGULAR_FONT_SIZE = round(20 * FONT_SCALE)
+SMALL_FONT_SIZE = round(16 * FONT_SCALE)
+TITLE_FONT_SIZE = round(28 * FONT_SCALE)
+META_FONT_SIZE = round(18 * FONT_SCALE)
 
 
 class Renderer:
     def __init__(self, size: tuple[int, int] = (WIDTH, HEIGHT)) -> None:
         self.size = size
-        self.font_regular = _font(20)
-        self.font_small = _font(16)
-        self.font_title = _font(28)
-        self.font_meta = _font(18)
+        self.font_regular = _font(REGULAR_FONT_SIZE)
+        self.font_small = _font(SMALL_FONT_SIZE)
+        self.font_title = _font(TITLE_FONT_SIZE)
+        self.font_meta = _font(META_FONT_SIZE)
 
     def render(self, payload: RenderPayload) -> Image.Image:
         image = Image.new("RGB", self.size, "white")
@@ -40,7 +45,7 @@ class Renderer:
 
         column_gap = 22
         column_width = (x1 - x0 - column_gap) // 2
-        line_height = 25
+        line_height = 15
         max_lines_per_col = max(1, (y1 - y0) // line_height)
         wrapped: list[str] = []
         for raw_line in lyrics.splitlines():
@@ -48,7 +53,7 @@ class Renderer:
             if not line:
                 wrapped.append("")
                 continue
-            wrapped.extend(textwrap.wrap(line, width=33) or [""])
+            wrapped.extend(textwrap.wrap(line, width=55) or [""])
 
         capacity = max_lines_per_col * 2
         truncated = len(wrapped) > capacity
@@ -88,16 +93,18 @@ class Renderer:
             self._wrapped_text(draw, payload.track.album, x0, y, x1 - x0, self.font_small, max_lines=3)
 
     def _wrapped_text(self, draw, text: str, x: int, y: int, width: int, font, max_lines: int) -> int:
-        chars = max(8, width // 11)
+        chars = max(8, width // 7)
         lines = textwrap.wrap(text or "-", width=chars)[:max_lines]
         for line in lines:
             draw.text((x, y), line, font=font, fill="black")
-            y += font.size + 5
+            y += _font_size(font) + 3
         return y
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     for path in (
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/noto/NotoSans-Regular.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
     ):
@@ -106,3 +113,7 @@ def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
         except OSError:
             pass
     return ImageFont.load_default()
+
+
+def _font_size(font: ImageFont.FreeTypeFont | ImageFont.ImageFont) -> int:
+    return getattr(font, "size", REGULAR_FONT_SIZE)

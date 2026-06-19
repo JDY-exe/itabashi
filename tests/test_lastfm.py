@@ -1,11 +1,21 @@
 import pytest
 
 from itabashi.http import APIError, TransientHTTPError
-from itabashi.lastfm import parse_current_track
+from itabashi.lastfm import LASTFM_API, LastFMClient, parse_current_track
 
 
 def payload(track):
     return {"recenttracks": {"track": [track]}}
+
+
+class FakeHTTP:
+    def __init__(self, response):
+        self.response = response
+        self.calls = []
+
+    def get_json(self, url, params=None):
+        self.calls.append((url, params))
+        return self.response
 
 
 def test_parse_now_playing_track():
@@ -28,6 +38,18 @@ def test_parse_now_playing_track():
     assert track.artist == "Artist"
     assert track.album == "Album"
     assert track.album_art_url == "https://example.test/art.jpg"
+
+
+def test_current_track_logs_poll(caplog):
+    http = FakeHTTP(payload({"@attr": {"nowplaying": "true"}, "name": "Song", "artist": {"#text": "Artist"}}))
+    client = LastFMClient("api-key", "lastfm-user", http)
+
+    with caplog.at_level("INFO", logger="itabashi.lastfm"):
+        track = client.current_track()
+
+    assert track.title == "Song"
+    assert http.calls[0][0] == LASTFM_API
+    assert "Polling Last.fm for current track" in caplog.text
 
 
 def test_parse_no_current_track_returns_none():

@@ -67,3 +67,16 @@ def test_rate_limit_backoff_and_recovery():
     assert service.poll_once() == 60
     assert service.poll_once() == 20
     assert submitted == [Track("Artist", "Song")]
+
+
+def test_song_change_detected_logs_only_when_submitted(caplog):
+    tracks = iter([Track("Artist", "Song"), Track("Artist", "Song")])
+    worker = LatestWinsWorker(lambda track: None)
+
+    with caplog.at_level("INFO", logger="itabashi.scheduler"):
+        service = PollingService(lambda: next(tracks), worker, poll_seconds=20, sleep=lambda seconds: None)
+
+        service.poll_once()
+        service.poll_once()
+
+    assert caplog.text.count("Song change detected: Artist - Song") == 1

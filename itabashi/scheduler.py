@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from threading import Condition, Event, Thread
 import time
 from typing import Callable
@@ -11,6 +12,7 @@ from .models import Track
 
 RenderTrack = Callable[[Track], None]
 PollCurrent = Callable[[], Track | None]
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -106,5 +108,11 @@ class PollingService:
             return self.backoff.current_seconds
         self.backoff.success()
         if track is not None:
-            self.worker.submit(track)
+            if self.worker.submit(track):
+                logger.info(
+                    "Song change detected: %s - %s",
+                    track.artist,
+                    track.title,
+                    extra={"artist": track.artist, "title": track.title, "album": track.album},
+                )
         return self.backoff.current_seconds

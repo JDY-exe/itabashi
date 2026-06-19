@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Any
 
 from .http import APIError, JSONHTTPClient, TransientHTTPError
@@ -8,6 +9,7 @@ from .models import Track
 
 
 LASTFM_API = "https://ws.audioscrobbler.com/2.0/"
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -18,6 +20,7 @@ class LastFMClient:
     api_url: str = LASTFM_API
 
     def current_track(self) -> Track | None:
+        logger.info("Polling Last.fm for current track", extra={"lastfm_user": self.user})
         payload = self.http.get_json(
             self.api_url,
             {

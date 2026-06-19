@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from .cache import AssetCache
 from .display import make_display
 from .http import JSONHTTPClient
@@ -8,6 +10,10 @@ from .lyrics import GeniusLyricsProvider
 from .models import Config, RenderPayload, Track
 from .renderer import Renderer
 from .scheduler import LatestWinsWorker, PollingService
+
+
+def configure_logging() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
 def build_service(config: Config) -> PollingService:
@@ -47,11 +53,13 @@ def render_current_once(config: Config) -> bool:
 
 
 def main() -> None:
+    configure_logging()
     service = build_service(Config.from_env())
     service.run_forever()
 
 
 def dry_run_main() -> None:
+    configure_logging()
     config = Config.from_env()
     config = Config(
         lastfm_api_key=config.lastfm_api_key,
