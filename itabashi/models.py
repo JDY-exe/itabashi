@@ -25,10 +25,17 @@ class Track:
     title: str
     album: str = ""
     album_art_url: str = ""
+    started_at_epoch: float | None = None
+    duration_ms: int | None = None
+    observed_at_epoch: float | None = None
 
     @property
     def identity(self) -> str:
         return cache_key(self.artist, self.title, self.album)
+
+    @property
+    def render_identity(self) -> str:
+        return cache_key(self.identity, str(self.observed_at_epoch or ""))
 
 
 @dataclass(frozen=True)
@@ -36,6 +43,7 @@ class RenderPayload:
     track: Track
     lyrics: str | None
     album_art_path: Path | None = None
+    now_epoch: float | None = None
 
 
 @dataclass(frozen=True)

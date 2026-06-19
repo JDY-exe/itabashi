@@ -51,8 +51,9 @@ class LatestWinsWorker:
 
     def submit(self, track: Track) -> bool:
         with self.condition:
-            pending_identity = self.pending.identity if self.pending else None
-            if track.identity in {self.rendered_identity, self.inflight_identity, pending_identity}:
+            render_identity = track.render_identity
+            pending_identity = self.pending.render_identity if self.pending else None
+            if render_identity in {self.rendered_identity, self.inflight_identity, pending_identity}:
                 return False
             self.pending = track
             self.condition.notify()
@@ -67,10 +68,10 @@ class LatestWinsWorker:
                     return
                 track = self.pending
                 self.pending = None
-                self.inflight_identity = track.identity
+                self.inflight_identity = track.render_identity
             self.render_track(track)
             with self.condition:
-                self.rendered_identity = track.identity
+                self.rendered_identity = track.render_identity
                 self.inflight_identity = None
 
 

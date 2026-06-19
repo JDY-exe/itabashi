@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from .cache import AssetCache
 from .display import make_display
@@ -23,11 +24,18 @@ def build_service(config: Config) -> PollingService:
     cache = AssetCache(config.cache_dir, http)
     renderer = Renderer()
     display = make_display(config.output_mode, config.png_output)
+    last_displayed: tuple[str, int] | None = None
 
     def render_track(track: Track) -> None:
+        nonlocal last_displayed
         text = cache.get_lyrics(track, lyrics.lyrics_for, provider="genius")
         art_path = cache.get_album_art(track.album_art_url)
-        display.show(renderer.render(RenderPayload(track=track, lyrics=text, album_art_path=art_path)))
+        payload = RenderPayload(track=track, lyrics=text, album_art_path=art_path, now_epoch=track.observed_at_epoch)
+        page_key = (track.identity, renderer.page_index(payload))
+        if page_key == last_displayed:
+            return
+        display.show(renderer.render(payload))
+        last_displayed = page_key
 
     return PollingService(
         poll_current=lastfm.current_track,
@@ -48,7 +56,11 @@ def render_current_once(config: Config) -> bool:
     display = make_display(config.output_mode, config.png_output)
     text = cache.get_lyrics(track, lyrics.lyrics_for, provider="genius")
     art_path = cache.get_album_art(track.album_art_url)
-    display.show(renderer.render(RenderPayload(track=track, lyrics=text, album_art_path=art_path)))
+    display.show(
+        renderer.render(
+            RenderPayload(track=track, lyrics=text, album_art_path=art_path, now_epoch=track.observed_at_epoch or time.time())
+        )
+    )
     return True
 
 

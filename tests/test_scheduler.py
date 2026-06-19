@@ -16,6 +16,14 @@ def test_no_duplicate_refresh_for_same_track():
     assert worker.pending == track
 
 
+def test_same_track_can_refresh_on_new_poll_observation():
+    worker = LatestWinsWorker(lambda track: None)
+
+    assert worker.submit(Track("Artist", "Song", observed_at_epoch=1.0)) is True
+    assert worker.submit(Track("Artist", "Song", observed_at_epoch=2.0)) is True
+    assert worker.pending == Track("Artist", "Song", observed_at_epoch=2.0)
+
+
 def test_latest_wins_during_active_refresh():
     started = threading.Event()
     release = threading.Event()
